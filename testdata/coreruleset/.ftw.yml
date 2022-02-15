@@ -56,7 +56,3 @@ testoverride:
     '920430-5': 'Caddy will close the connection on close and return 400'
     '920430-8': 'HTTP/3 is unsupported by caddy'
     '920430-9': 'HTTP/0.8 is unsupported by caddy'
-    # Temporary:
-    '953120-0': 'Temporary, this works but the testing framework does not support it yet.'
-    '953120-2': 'Temporary, this works but the testing framework does not support it yet.'
-    '953120-4': 'Temporary, this works but the testing framework does not support it yet.'

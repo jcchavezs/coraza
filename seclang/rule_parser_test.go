@@ -77,3 +77,24 @@ func TestErrorLine(t *testing.T) {
 		t.Error("failed to find error line, got " + err.Error())
 	}
 }
+
+func TestCompileMultipleChains(t *testing.T) {
+	waf := coraza.NewWaf()
+	p, _ := NewParser(waf)
+	if err := p.FromString(`
+	SecRule REQUEST_FILENAME "@unconditionalMatch" "id:100, phase:2, t:none, log,chain"
+	SecRule ARGS:username "@unconditionalMatch" "t:none, setvar:'tx.some=lala',chain"
+	SecRule ARGS:password "@unconditionalMatch" "t:none, setvar:'tx.some2=lolo'"
+		`); err != nil {
+		t.Error(err)
+	}
+	c := 0
+	r := waf.Rules.FindByID(100)
+	for r != nil {
+		c++
+		r = r.Chain
+	}
+	if c != 3 {
+		t.Errorf("failed to compile multiple chains, expected 3, got %d", c)
+	}
+}
