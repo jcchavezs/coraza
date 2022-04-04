@@ -33,7 +33,7 @@ jobs:
       run: |
         git clone https://github.com/coreruleset/coreruleset
         cd coreruleset
-        git checkout 6d8e8f8
+        gh pr checkout 2417
         cd ..
         mv coreruleset /tmp
         cp coraza.conf-recommended /tmp/
