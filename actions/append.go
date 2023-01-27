@@ -4,6 +4,7 @@
 package actions
 
 import (
+	"github.com/corazawaf/coraza/v3/internal/corazawaf"
 	"github.com/corazawaf/coraza/v3/macro"
 	"github.com/corazawaf/coraza/v3/rules"
 )
@@ -12,7 +13,7 @@ type appendFn struct {
 	data macro.Macro
 }
 
-func (a *appendFn) Init(r rules.RuleMetadata, data string) error {
+func (a *appendFn) Init(_ rules.RuleMetadata, data string) error {
 	macro, err := macro.NewMacro(data)
 	if err != nil {
 		return err
@@ -21,14 +22,17 @@ func (a *appendFn) Init(r rules.RuleMetadata, data string) error {
 	return nil
 }
 
-func (a *appendFn) Evaluate(r rules.RuleMetadata, tx rules.TransactionState) {
+func (a *appendFn) Evaluate(_ rules.RuleMetadata, txS rules.TransactionState) {
+	tx := txS.(*corazawaf.Transaction)
+
 	if !tx.ContentInjection() {
 		tx.DebugLogger().Debug("append rejected because of ContentInjection")
 		return
 	}
+
 	data := a.data.Expand(tx)
-	if _, err := tx.ResponseBodyWriter().Write([]byte(data)); err != nil {
-		tx.DebugLogger().Error("append failed to write to response buffer: %s", err.Error())
+	if len(data) > 0 {
+		tx.AppendInResponseBody([]byte(data))
 	}
 }
 

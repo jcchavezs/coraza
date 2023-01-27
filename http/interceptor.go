@@ -112,10 +112,12 @@ func wrap(w http.ResponseWriter, r *http.Request, tx types.Transaction) (
 			// as next step is write into the response writer (triggering a 200 in the
 			// response status code.)
 			i.w.WriteHeader(i.statusCode)
-			if _, err := io.Copy(w, reader); err != nil {
+			i.w.Write(tx.ResponseBodyPrepend())
+			if _, err := io.Copy(i.w, reader); err != nil {
 				i.w.WriteHeader(http.StatusInternalServerError)
 				return fmt.Errorf("failed to copy the response body: %v", err)
 			}
+			i.w.Write(tx.ResponseBodyAppend())
 		} else {
 			i.w.WriteHeader(i.statusCode)
 		}

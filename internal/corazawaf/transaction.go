@@ -69,6 +69,10 @@ type Transaction struct {
 	// Handles request body buffers
 	requestBodyBuffer *BodyBuffer
 
+	responseBodyAppend []byte
+
+	responseBodyPrepend []byte
+
 	// Handles response body buffers
 	ResponseBodyBuffer *BodyBuffer
 
@@ -321,10 +325,6 @@ func (tx *Transaction) ContentInjection() bool {
 
 func (tx *Transaction) DebugLogger() loggers.DebugLogger {
 	return tx.WAF.Logger
-}
-
-func (tx *Transaction) ResponseBodyReader() (io.Reader, error) {
-	return tx.ResponseBodyBuffer.Reader()
 }
 
 func (tx *Transaction) RequestBodyReader() (io.Reader, error) {
@@ -1033,6 +1033,38 @@ func (tx *Transaction) IsResponseBodyProcessable() bool {
 	return stringsutil.InSlice(ct, tx.WAF.ResponseBodyMimeTypes)
 }
 
+func (tx *Transaction) PrependInResponseBody(b []byte) {
+	if tx.RuleEngine == types.RuleEngineOff {
+		return
+	}
+
+	if !tx.ContentInjection() {
+		return
+	}
+
+	tx.responseBodyPrepend = append(b, tx.responseBodyPrepend...)
+}
+
+func (tx *Transaction) ResponseBodyPrepend() []byte {
+	return tx.responseBodyPrepend
+}
+
+func (tx *Transaction) AppendInResponseBody(b []byte) {
+	if tx.RuleEngine == types.RuleEngineOff {
+		return
+	}
+
+	if !tx.ContentInjection() {
+		return
+	}
+
+	tx.responseBodyAppend = append(tx.responseBodyAppend, b...)
+}
+
+func (tx *Transaction) ResponseBodyAppend() []byte {
+	return tx.responseBodyAppend
+}
+
 func (tx *Transaction) ResponseBodyWriter() io.Writer {
 	return tx.ResponseBodyBuffer
 }
@@ -1085,6 +1117,10 @@ func (tx *Transaction) ProcessResponseBody() (*types.Interruption, error) {
 	tx.variables.responseBody.Set(buf.String())
 	tx.WAF.Rules.Eval(types.PhaseResponseBody, tx)
 	return tx.interruption, nil
+}
+
+func (tx *Transaction) ResponseBodyReader() (io.Reader, error) {
+	return tx.ResponseBodyBuffer.Reader()
 }
 
 // ProcessLogging Logging all information relative to this transaction.

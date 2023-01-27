@@ -113,6 +113,14 @@ type Transaction interface {
 	// note: Remember to check for a possible intervention.
 	ProcessResponseHeaders(code int, proto string) *Interruption
 
+	PrependInResponseBody(b []byte)
+
+	ResponseBodyPrepend() []byte
+
+	AppendInResponseBody(b []byte)
+
+	ResponseBodyAppend() []byte
+
 	// ResponseBodyWriter returns a io.Writer for writing the response body to.
 	// Contents will be buffered until the transaction is closed.
 	ResponseBodyWriter() io.Writer

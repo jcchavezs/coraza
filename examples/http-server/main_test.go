@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -17,24 +18,32 @@ func setupTestServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(txhttp.WrapHandler(waf, t.Logf, http.HandlerFunc(exampleHandler)))
 }
 
-func doGetRequest(t *testing.T, getPath string) int {
+func doGetRequest(t *testing.T, getPath string) (int, []byte) {
 	t.Helper()
 	resp, err := http.Get(getPath)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	resp.Body.Close()
-	return resp.StatusCode
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return resp.StatusCode, b
 }
 
-func doPostRequest(t *testing.T, postPath string, data []byte) int {
+func doPostRequest(t *testing.T, postPath string, data []byte) (int, []byte) {
 	t.Helper()
 	resp, err := http.Post(postPath, "application/x-www-form-urlencoded", bytes.NewBuffer(data))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	resp.Body.Close()
-	return resp.StatusCode
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return resp.StatusCode, b
 }
 
 func TestHttpServer(t *testing.T) {
@@ -104,13 +113,32 @@ func TestHttpServer(t *testing.T) {
 			testServer := setupTestServer(t)
 			defer testServer.Close()
 			if tt.body == nil {
-				statusCode = doGetRequest(t, testServer.URL+tt.path)
+				statusCode, _ = doGetRequest(t, testServer.URL+tt.path)
 			} else {
-				statusCode = doPostRequest(t, testServer.URL+tt.path, tt.body)
+				statusCode, _ = doPostRequest(t, testServer.URL+tt.path, tt.body)
 			}
 			if want, have := tt.expStatus, statusCode; want != have {
 				t.Errorf("Unexpected status code, want: %d, have: %d", want, have)
 			}
 		})
+	}
+}
+
+func TestContentInjection(t *testing.T) {
+	os.Setenv("DIRECTIVES_FILE", "./testdata/append-prepend.conf")
+	// Spin up the test server
+	testServer := setupTestServer(t)
+	defer testServer.Close()
+
+	statusCode, body := doPostRequest(t, testServer.URL, nil)
+
+	if want, have := 200, statusCode; want != have {
+		t.Fatalf("unexpected status code, want: %d, have: %d", want, have)
+	}
+
+	expectedBody := "Someone said: Hello world, transaction not disrupted. Still I do not believe it."
+
+	if want, have := expectedBody, body; want != string(have) {
+		t.Fatalf("unexpected body, want: %q, have: %q", want, have)
 	}
 }
